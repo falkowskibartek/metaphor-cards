@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 
-const cards = [
+type Card = {
+  id: number;
+  title: string;
+  subtitle: string;
+  img: string;
+};
+
+const cards: Card[] = [
   { id: 1, title: "Sowa", subtitle: "Mądrość i intuicja", img: "https://images.unsplash.com/photo-1575537302964-96cd47c06b1b?w=400" },
   { id: 2, title: "Lis", subtitle: "Spryt i adaptacja", img: "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=400" },
   { id: 3, title: "Latarnia", subtitle: "Prowadzenie i jasność", img: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400" },
@@ -9,13 +16,13 @@ const cards = [
   { id: 5, title: "Amulet", subtitle: "Ochrona i energia", img: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400" }
 ];
 
-function shuffle(array) {
+function shuffle<T>(array: T[]) {
   return [...array].sort(() => Math.random() - 0.5);
 }
 
 export default function MagicCardsApp() {
-  const [deck, setDeck] = useState(cards);
-  const [selected, setSelected] = useState(null);
+  const [deck, setDeck] = useState<Card[]>(cards);
+  const [selected, setSelected] = useState<Card | null>(null);
 
   const drawCard = () => {
     if (!deck.length) return;
