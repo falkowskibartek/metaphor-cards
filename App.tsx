@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 type Card = { id: number; img: string };
 type Pos  = { rotate: number; y: number };
 type Phase = "idle" | "gather" | "spread";
+type Message = { role: "bot" | "user"; text: string };
 
 const ALL_CARDS: Card[] = [
   { id: 1,  img: "https://images.unsplash.com/photo-1575537302964-96cd47c06b1b?w=400" },
@@ -85,6 +86,160 @@ function calcLayout(windowWidth: number) {
   const spreadW = (N - 1) * overlap + cardW;
 
   return { isMobile, hPad, cardW, cardH, overlap, spreadW };
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+const OPENING_MESSAGE =
+  "Witaj. Wyciągnąłeś tę kartę nieprzypadkowo. Co widzisz, kiedy na nią patrzysz? Jakie pierwsze skojarzenie przychodzi ci do głowy?";
+
+const MOCK_BOT_REPLIES = [
+  "To bardzo głęboka refleksja. Zastanów się, co ta karta mówi ci o twoich obecnych wyzwaniach.",
+  "Interesująca interpretacja. Karta często ujawnia to, co już podświadomie wiemy, ale boimy się przyznać.",
+  "Twoje słowa niosą dużo mądrości. Co byś zrobił, gdybyś nie czuł strachu?",
+  "To piękne spostrzeżenie. Jak ta energia, którą widzisz w karcie, może się przełożyć na twoje życie właśnie teraz?",
+  "Czuję, że ta karta trafiła do ciebie we właściwym momencie. Zaufaj temu, co czujesz.",
+  "Bardzo trafna obserwacja. Jakie zmiany chciałbyś wprowadzić w swoim życiu, inspirując się tym obrazem?",
+];
+
+function ChatPanel() {
+  const [messages, setMessages] = useState<Message[]>([
+    { role: "bot", text: OPENING_MESSAGE },
+  ]);
+  const [input, setInput]     = useState("");
+  const [replyIdx, setReplyIdx] = useState(0);
+  const [isTyping, setIsTyping] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
+
+  const send = () => {
+    const text = input.trim();
+    if (!text || isTyping) return;
+    setInput("");
+    setMessages((m) => [...m, { role: "user", text }]);
+    setIsTyping(true);
+    setTimeout(() => {
+      setMessages((m) => [
+        ...m,
+        { role: "bot", text: MOCK_BOT_REPLIES[replyIdx % MOCK_BOT_REPLIES.length] },
+      ]);
+      setReplyIdx((i) => i + 1);
+      setIsTyping(false);
+    }, 900 + Math.random() * 700);
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex", flexDirection: "column",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.10)",
+        borderRadius: 16,
+        overflow: "hidden",
+        flex: 1, minWidth: 0,
+      }}
+    >
+      {/* Messages */}
+      <div
+        style={{
+          flex: 1, overflowY: "auto",
+          padding: "16px 16px 8px",
+          display: "flex", flexDirection: "column", gap: 10,
+        }}
+      >
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            style={{
+              alignSelf:  msg.role === "user" ? "flex-end" : "flex-start",
+              maxWidth:   "82%",
+              background: msg.role === "user"
+                ? "linear-gradient(135deg, #7c3aed, #ec4899)"
+                : "rgba(255,255,255,0.09)",
+              borderRadius: msg.role === "user"
+                ? "14px 14px 4px 14px"
+                : "14px 14px 14px 4px",
+              padding: "9px 13px",
+              fontSize: 13, lineHeight: 1.55, color: "white",
+            }}
+          >
+            {msg.text}
+          </div>
+        ))}
+
+        {isTyping && (
+          <div
+            style={{
+              alignSelf: "flex-start",
+              background: "rgba(255,255,255,0.09)",
+              borderRadius: "14px 14px 14px 4px",
+              padding: "11px 14px",
+              display: "flex", gap: 5, alignItems: "center",
+            }}
+          >
+            {[0, 1, 2].map((dot) => (
+              <motion.div
+                key={dot}
+                style={{
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: "rgba(255,255,255,0.45)",
+                }}
+                animate={{ y: [0, -4, 0] }}
+                transition={{ duration: 0.7, repeat: Infinity, delay: dot * 0.14, ease: "easeInOut" }}
+              />
+            ))}
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input */}
+      <div
+        style={{
+          display: "flex", gap: 8, padding: "10px 12px",
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          background: "rgba(0,0,0,0.2)",
+        }}
+      >
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+          placeholder="Napisz swoją odpowiedź…"
+          style={{
+            flex: 1,
+            background: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 999,
+            padding: "8px 14px",
+            color: "white", fontSize: 13, outline: "none",
+          }}
+        />
+        <button
+          onClick={send}
+          disabled={!input.trim() || isTyping}
+          style={{
+            background: "linear-gradient(135deg, #7c3aed, #ec4899)",
+            border: "none", borderRadius: "50%",
+            width: 36, height: 36, flexShrink: 0,
+            cursor: !input.trim() || isTyping ? "not-allowed" : "pointer",
+            opacity: !input.trim() || isTyping ? 0.4 : 1,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "opacity 0.15s",
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+            stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ─── CardBack ─────────────────────────────────────────────────────────────────
@@ -352,16 +507,17 @@ export default function App() {
         })}
       </div>
 
-      {/* ── Revealed card overlay (mobile + desktop) ─────────────────────── */}
+      {/* ── Card + Chat overlay ───────────────────────────────────────────── */}
       <AnimatePresence>
         {revealedCard && (
           <motion.div
-            key="mobile-overlay"
+            key="overlay"
             style={{
               position: "fixed", inset: 0,
               zIndex: 2000,
               display: "flex", alignItems: "center", justifyContent: "center",
               background: "rgba(4,0,8,0.88)",
+              padding: isMobile ? 16 : 32,
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -370,35 +526,60 @@ export default function App() {
             onClick={() => setRevealedId(null)}
           >
             <motion.div
-              style={{ position: "relative" }}
+              style={{
+                position: "relative",
+                display: "flex",
+                flexDirection: isMobile ? "column" : "row",
+                alignItems: isMobile ? "center" : "stretch",
+                gap: isMobile ? 16 : 24,
+                width: "100%",
+                maxWidth: isMobile ? 360 : 760,
+                height: isMobile ? undefined : 400,
+                maxHeight: "90vh",
+              }}
               initial={{ scale: 0.5, y: 80 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.5, y: 80 }}
               transition={{ type: "spring", stiffness: 290, damping: 26 }}
+              onClick={(e) => e.stopPropagation()}
             >
+              {/* Close button */}
+              <button
+                onClick={() => setRevealedId(null)}
+                style={{
+                  position: "absolute", top: -14, right: -14, zIndex: 10,
+                  width: 30, height: 30, borderRadius: "50%",
+                  background: "rgba(255,255,255,0.12)",
+                  border: "1px solid rgba(255,255,255,0.22)",
+                  color: "white", fontSize: 18, lineHeight: 1,
+                  cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                ×
+              </button>
+
+              {/* Card */}
               {(() => {
                 const ow = isMobile
-                  ? Math.min(Math.round(windowWidth * 0.74), 280)
-                  : Math.min(Math.round(windowWidth * 0.24), 340);
+                  ? Math.min(Math.round(windowWidth * 0.44), 160)
+                  : Math.round(400 * 112 / 182);
                 const oh = Math.round(ow * (182 / 112));
                 const or = Math.max(10, Math.round(ow * 0.11));
                 return (
-                  <>
+                  <div style={{ position: "relative", flexShrink: 0 }}>
                     <div
                       style={{
                         width: ow, height: oh,
-                        borderRadius: or,
-                        overflow: "hidden",
+                        borderRadius: or, overflow: "hidden",
                         backgroundImage: `url(${revealedCard.img})`,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
+                        backgroundSize: "cover", backgroundPosition: "center",
                         boxShadow: "0 0 70px rgba(236,72,153,0.5), 0 24px 70px rgba(0,0,0,0.9)",
                       }}
                     />
                     <motion.div
                       style={{
-                        position: "absolute", inset: 0,
-                        borderRadius: or,
+                        position: "absolute", inset: 0, borderRadius: or,
                         border: "2px solid rgba(236,72,153,0.85)",
                         boxShadow: "0 0 40px rgba(236,72,153,0.5), 0 0 90px rgba(168,85,247,0.22)",
                         pointerEvents: "none",
@@ -406,17 +587,19 @@ export default function App() {
                       animate={{ opacity: [0.6, 1, 0.6] }}
                       transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
                     />
-                    <p style={{
-                      position: "absolute", bottom: -30, width: "100%",
-                      textAlign: "center", color: "rgba(255,255,255,0.35)",
-                      fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase",
-                      margin: 0,
-                    }}>
-                      Dotknij aby zamknąć
-                    </p>
-                  </>
+                  </div>
                 );
               })()}
+
+              {/* Chat */}
+              <div style={{
+                flex: 1, minWidth: 0,
+                height: isMobile ? 300 : "100%",
+                width: isMobile ? "100%" : undefined,
+                display: "flex",
+              }}>
+                <ChatPanel key={revealedCard.id} />
+              </div>
             </motion.div>
           </motion.div>
         )}
