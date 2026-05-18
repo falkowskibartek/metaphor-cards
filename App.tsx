@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Card = { id: number; img: string };
 type Pos  = { rotate: number; y: number };
@@ -144,6 +144,8 @@ export default function App() {
   const revealLift = Math.round(cardH * 0.28);
   const hoverLift  = Math.round(cardH * 0.10);
   const borderR    = Math.max(8, Math.round(cardW * 0.11));
+
+  const revealedCard = revealedId !== null ? spread.find(c => c.id === revealedId) ?? null : null;
 
   const handleCardClick = (card: Card) => {
     if (phase !== "idle") return;
@@ -349,6 +351,76 @@ export default function App() {
           );
         })}
       </div>
+
+      {/* ── Revealed card overlay (mobile + desktop) ─────────────────────── */}
+      <AnimatePresence>
+        {revealedCard && (
+          <motion.div
+            key="mobile-overlay"
+            style={{
+              position: "fixed", inset: 0,
+              zIndex: 2000,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: "rgba(4,0,8,0.88)",
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            onClick={() => setRevealedId(null)}
+          >
+            <motion.div
+              style={{ position: "relative" }}
+              initial={{ scale: 0.5, y: 80 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.5, y: 80 }}
+              transition={{ type: "spring", stiffness: 290, damping: 26 }}
+            >
+              {(() => {
+                const ow = isMobile
+                  ? Math.min(Math.round(windowWidth * 0.74), 280)
+                  : Math.min(Math.round(windowWidth * 0.24), 340);
+                const oh = Math.round(ow * (182 / 112));
+                const or = Math.max(10, Math.round(ow * 0.11));
+                return (
+                  <>
+                    <div
+                      style={{
+                        width: ow, height: oh,
+                        borderRadius: or,
+                        overflow: "hidden",
+                        backgroundImage: `url(${revealedCard.img})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                        boxShadow: "0 0 70px rgba(236,72,153,0.5), 0 24px 70px rgba(0,0,0,0.9)",
+                      }}
+                    />
+                    <motion.div
+                      style={{
+                        position: "absolute", inset: 0,
+                        borderRadius: or,
+                        border: "2px solid rgba(236,72,153,0.85)",
+                        boxShadow: "0 0 40px rgba(236,72,153,0.5), 0 0 90px rgba(168,85,247,0.22)",
+                        pointerEvents: "none",
+                      }}
+                      animate={{ opacity: [0.6, 1, 0.6] }}
+                      transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                    <p style={{
+                      position: "absolute", bottom: -30, width: "100%",
+                      textAlign: "center", color: "rgba(255,255,255,0.35)",
+                      fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase",
+                      margin: 0,
+                    }}>
+                      Dotknij aby zamknąć
+                    </p>
+                  </>
+                );
+              })()}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Buttons ───────────────────────────────────────────────────────── */}
       <div style={{ display: "flex", gap: isMobile ? 10 : 14, flexWrap: "wrap", justifyContent: "center" }}>
